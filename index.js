@@ -1,6 +1,7 @@
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./models/person')
 
 const app = express()
 
@@ -15,72 +16,51 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :b
 app.use(cors())
 app.use(express.static('dist'))
 
-let persons = [
-    { 
-      "id": 1,
-      "name": "Arto Hellas", 
-      "number": "040-123456"
-    },
-    { 
-      "id": 2,
-      "name": "Ada Lovelace", 
-      "number": "39-44-5323523"
-    },
-    { 
-      "id": 3,
-      "name": "Dan Abramov", 
-      "number": "12-43-234345"
-    },
-    { 
-      "id": 4,
-      "name": "Mary Poppendieck", 
-      "number": "39-23-6423122"
-    }
-]
-
 app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Person.find({}).then(persons => {
+        console.log('persons', persons)
+        response.json(persons)
+    })
 })
+
 app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(p => p.id === id)
-    if (person)
+    Person.findById(request.params.id).then(person => {
+        console.log('person', person)
         response.json(person)
-    else
+    }).catch(error => {
+        console.log('error', error)
         response.status(404).end()
+    })
 })
 app.get('/info', (request, response) => {
-    let body = `<p>Phonebook has info for ${persons.length} people</p>`
-    body += `${new Date()}`
-    response.send(body)
+    Person.find({}).then(persons => {
+        let body = `<p>Phonebook has info for ${persons.length} people</p>`
+        body += `${new Date()}`
+        response.send(body)
+    })
 })
 
 app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(p => p.id !== id)
-    response.status(204).end()
+    Person.deleteOne({ _id: request.params.id}).then(resp => {
+        console.log('resp', resp)
+        response.status(204).end()
+    })
 })
 
-const generateId = () => {
-    return Math.round(Math.random() * Number.MAX_SAFE_INTEGER)
-}
 app.post('/api/persons', (request, response) => {
     const body = request.body
     if (!body.name) 
         return response.status(400).json({ error: 'name is missing' })
     if (!body.number)
         return response.status(400).json({ error: 'number is missing' })
-    if (persons.find(p => p.name === body.name))
-        return response.status(400).json({ error: 'name must be unique' })
-    
 
-    const newPerson = {
+    const newPerson = new Person({
         name: body.name,
-        number: body.number,
-        id: generateId()
-    }
-    persons = persons.concat(newPerson)
-    response.status(201).json(newPerson)
+        number: body.number
+    })
+    newPerson.save().then(person => {
+        response.status(201).json(person)
+    })
 })
 
 const PORT = process.env.PORT || 3001
