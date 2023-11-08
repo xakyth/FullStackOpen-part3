@@ -49,20 +49,14 @@ app.put('/api/persons/:id', (request, response, next) => {
         name: request.body.name,
         number: request.body.number
     }
-    Person.findByIdAndUpdate(request.params.id, updPerson, { new: true }).then(retPerson => {
-        response.json(retPerson)
-    }).catch(error => next(error))
+    Person.findByIdAndUpdate(request.params.id, updPerson,
+         { new: true, runValidators: true, context: 'query' })
+         .then(retPerson => {
+            response.json(retPerson)
+        }).catch(error => next(error))
 })
 
-const errorHandler = (err, req, res, next) => {
-    console.error('err.message', err.message)
-    if (err.name === 'CastError')
-        res.status(400).send({ error: 'malformed id' })
-    next(err)
-}
-app.use(errorHandler)
-
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
     const body = request.body
     if (!body.name) 
         return response.status(400).json({ error: 'name is missing' })
@@ -75,8 +69,18 @@ app.post('/api/persons', (request, response) => {
     })
     newPerson.save().then(person => {
         response.status(201).json(person)
-    })
+    }).catch(error => next(error))
 })
+
+const errorHandler = (err, req, res, next) => {
+    console.error('err.message', err.message)
+    if (err.name === 'CastError')
+        res.status(400).send({ error: 'malformed id' })
+    if (err.name === 'ValidationError')
+        res.status(400).send({ error: err.message })
+    next(err)
+}
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
