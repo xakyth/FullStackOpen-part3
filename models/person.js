@@ -11,7 +11,11 @@ const personSchema = new mongoose.Schema({
         minLength: 3,
         required: true
     },
-    number: String
+    number: {
+        type: String,
+        minLength: 8,
+        match: [/\d{2,3}-\d+/, "should have 2 or 3 characters before '-' and numbers only after '-'. e.g. 12-345678"]
+    }
 })
 personSchema.set('toJSON', {
     transform: (person, retPerson) => {
